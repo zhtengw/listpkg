@@ -9,9 +9,19 @@
  
 
 2. **Files**
-
-+ |--README.md		This file
-+ |--listpkg-latest	The latest version of listpkg
-+ |--listpkg.SlackBuild	The SlackBuild script to build the Slackware package
+<table>
+  <tr>
+    <td>|--README.md</td>
+    <td>This file</td>
+  </tr>
+  <tr>
+    <td>|--listpkg-latest</td>	
+    <td>The latest version of listpkg</td>
+  </tr>
+  <tr>
+    <td>|--listpkg.SlackBuild</td>	
+    <td>The SlackBuild script to build the Slackware package</td>
+  </tr>
+</table>
 
  Contect the Author: atenzd@gmail.com
