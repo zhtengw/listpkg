@@ -9,7 +9,7 @@
  
 
 2. **Files**
-<table>
+<table class="table-condensed">
   <tr>
     <td>|--README.md</td>
     <td>This file</td>
