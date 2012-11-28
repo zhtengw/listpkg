@@ -17,8 +17,8 @@ fi
 rm -rf $PKG
 mkdir -p $PKG/sbin $PKG/install $OUTPUT
 
-cp listpkg-latest $PKG/sbin/listpkg
-chmod u+x $PKG/sbin/listpkg
+cat listpkg-latest > $PKG/sbin/listpkg
+chmod 755 $PKG/sbin/listpkg
 
 declare -i length=$(echo $PKGNAM | wc -m)-1
 for num in $(seq 1 $length)
