@@ -1,0 +1,598 @@
+#!/bin/bash
+# List the package log in /var/log/.
+# It works with pkgtools, giving a way to view the installed and removed packages.
+# Version: 0.0.9
+# Date:    2012/8/15
+# AUthor:  Aten Zhang
+
+VERSION=0.0.9
+
+insdir=/var/log/packages/
+inscript=/var/log/scripts/		# The directory where the doinst.sh scripts located
+remdir=/var/log/removed_packages/
+
+LS_OPTIONS="--full-time -h"
+# 已安装软件和已删除软件的列出命令
+lsins="ls $LS_OPTIONS $insdir "
+lsrem="ls $LS_OPTIONS $remdir "
+
+# 判断语系，如果是中文语系“zh_*”则提示信息为中文，否则为英文
+# 输出的提示头
+if [[ $LANG == zh_* || $LC_MESSAGES == zh_* ]]; then
+	institle="已安装软件:"
+	remtitle="已删除软件:"
+	nomatch="未找到"
+	nokey="缺少关键字，请先执行\"listpkg [-i|-r] [关键字]\"来搜索你要的包。"
+	search="搜索中……"
+	lnfile=": 链接到"
+else
+	institle="Installed Packages:"
+	remtitle="Removed Packages:"
+	nomatch="Not found"
+	nokey="Keywords lacked. Please run 'listpkg [-i|-r] [keywords]' first to search."
+	search="Searching..."
+	lnfile=": link to "
+fi
+
+function paraerr(){
+	if [[ $LANG == zh_* || $LC_MESSAGES == zh_* ]]; then
+		cat << EOF
+listpkg: 未知选项 "$1"
+用法: listpkg [选项] [关键词]
+试用 "listpkg --help" 来获得更多信息。
+EOF
+	else
+		cat << EOF
+listpkg: Unexpected option '$1'
+Usage: listpkg [option] [keyword]
+Try 'listpkg --help' for more information.
+EOF
+	fi
+}
+
+function version(){
+	if [[ $LANG == zh_* || $LC_MESSAGES == zh_* ]]; then
+	cat << EOF
+listpkg: 列出系统中的软件包
+版本: $VERSION
+EOF
+	else
+	cat << EOF
+listpkg: List the packages in your system
+Version: $VERSION
+EOF
+fi
+}
+function message(){
+	if [[ $LANG == zh_* || $LC_MESSAGES == zh_* ]]; then
+	cat << EOF
+用法: listpkg [选项] [关键词]
+选项:
+ -i --installed	列出已安装的软件包
+ -r --removed	列出已删除的软件包
+ -a 		使用AND逻辑查找关键词
+ -c		查看软件的详细信息
+ -f 		在软件的详细信息中查找关键词，
+		并输出匹配的软件名
+ -h --help	显示此帮助
+ -v --version	查看版本
+关键词:
+ 可以使用多个关键词，每个关键词之间用空格分开。
+ 如果要使用形如"-key"的关键词，请用".*-key"代替。
+ 默认关键词之间的关系是OR逻辑，若要使用AND逻辑，
+请加"-a"选项。
+ 如果想要在软件的详细描述中查找内容，可用"-f"选项，
+这在想得知某个文件归属于哪个软件包时会很有用，不过
+会花稍长时间。
+EOF
+	else
+	cat << EOF
+Usage: listpkg [option] [keyword]
+options:
+ -i --installed	list the installed packages
+ -r --removed	list the removed packages
+ -a		use AND logic to search by keywords
+ -c		show the details of the packages
+ -f		look for keywords in the detail 
+		informations, show the package
+		names when matched
+ -h --help	show this help page
+ -v --version	show the version of this script
+keyword:
+ You can use more the one keyword, and 
+separate them with space.
+ If you'd like a keyword like '-key', 
+use '.*-key' instead.
+ By default, OR logic is used to search
+among keywords. If you'd like AND logic,
+add '-a' as option.
+ If you want to search words in the detail information, 
+option '-f' may be helpful. It's useful when you doubt
+which package some files belong to. But it would take 
+some time to find out.
+EOF
+	fi
+}
+
+function ifmatch(){
+	if [ $1 != 0 ]; then
+		echo $2
+		echo " $nomatch $key"
+	fi
+	return
+}
+
+function andlogic(){
+	insmatch=yes
+	remmatch=yes
+	statusins=(0 0 0 0 0 0 0 0 0)
+	statusrem=(0 0 0 0 0 0 0 0 0)
+	# for installed
+	if [ "$1" == '-i' -o "$1" == '--installed' ]; then
+		shift
+		key=$1
+		case $# in
+			1)
+				$lsins | cut -c 28-47,64- | grep -i ".*$1" | sed "1i $remtitle" | more 	
+				ifmatch ${PIPESTATUS[2]} $institle
+			;;
+			2)
+				$lsins | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | sed "1i $institle" | more 
+				statusins=(${PIPESTATUS[*]})
+			;;
+			3)
+				$lsins | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | sed "1i $institle" | more 
+				statusins=(${PIPESTATUS[*]})
+			;;
+			4)
+				$lsins | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | grep -i ".*$4" | sed "1i $institle" | more 
+				statusins=(${PIPESTATUS[*]})
+			;;
+			5)
+				$lsins | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | grep -i ".*$4" | grep -i ".*$5" | sed "1i $institle" | more 
+				statusins=(${PIPESTATUS[*]})
+			;;
+			6)
+				$lsins | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | grep -i ".*$4" | grep -i ".*$5" | grep -i ".*$6" | sed "1i $institle" | more 
+				status=(${PIPESTATUS[*]})
+			;;
+			7)
+				$lsins | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | grep -i ".*$4" | grep -i ".*$5" | grep -i ".*$6" | grep -i ".*$7" | sed "1i $institle" | more 
+				statusins=(${PIPESTATUS[*]})
+			;;
+			*)
+				echo " $nokey"
+				exit 1
+			;;
+		esac
+
+	# for removed
+	elif [ "$1" == '-r' -o "$1" == '--removed' ]; then
+		shift
+		key=$1
+		case $# in
+			1)
+				$lsrem | cut -c 28-47,64- | grep -i ".*$1" | sed "1i $remtitle" | more 	
+				ifmatch ${PIPESTATUS[2]} $remtitle
+			;;
+			2)
+				$lsrem | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | sed "1i $remtitle" | more 
+				statusrem=(${PIPESTATUS[*]})
+			;;
+			3)
+				$lsrem | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | sed "1i $remtitle" | more 
+				statusrem=(${PIPESTATUS[*]})
+			;;
+			4)
+				$lsrem | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | grep -i ".*$4" | sed "1i $remtitle" | more 
+				statusrem=(${PIPESTATUS[*]})
+			;;
+			5)
+				$lsrem | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | grep -i ".*$4" | grep -i ".*$5" | sed "1i $remtitle" | more 
+				statusrem=(${PIPESTATUS[*]})
+			;;
+			6)
+				$lsrem | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | grep -i ".*$4" | grep -i ".*$5" | grep -i ".*$6" | sed "1i $remtitle" | more 
+				statusrem=(${PIPESTATUS[*]})
+			;;
+			7)
+				$lsrem | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | grep -i ".*$4" | grep -i ".*$5" | grep -i ".*$6" | grep -i ".*$7" | sed "1i $remtitle" | more 
+				statusrem=(${PIPESTATUS[*]})
+			;;
+			*)
+				echo " $nokey"
+				exit 1
+			;;
+		esac
+
+	else
+		key=$1
+		case $# in
+			1)
+				$lsins | cut -c 28-47,64- | grep -i ".*$1" | sed "1i $institle" | more 	
+				ifmatch ${PIPESTATUS[2]} $institle
+				
+				$lsrem | cut -c 28-47,64- | grep -i ".*$1" | sed "1i $remtitle" | more 	
+				ifmatch ${PIPESTATUS[2]} $remtitle
+				
+			;;
+			2)
+				$lsins | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | sed "1i $institle" | more 
+				statusins=(${PIPESTATUS[*]})
+
+				$lsrem | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | sed "1i $remtitle" | more 
+				statusrem=(${PIPESTATUS[*]})
+			;;
+			3)
+				$lsins | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | sed "1i $institle" | more 
+				statusins=(${PIPESTATUS[*]})
+
+				$lsrem | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | sed "1i $remtitle" | more 
+				statusrem=(${PIPESTATUS[*]})
+			;;
+			4)
+				$lsins | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | grep -i ".*$4" | sed "1i $institle" | more 
+				statusins=(${PIPESTATUS[*]})
+
+				$lsrem | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | grep -i ".*$4" | sed "1i $remtitle" | more 
+				statusrem=(${PIPESTATUS[*]})
+			;;
+			5)
+				$lsins | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | grep -i ".*$4" | grep -i ".*$5" | sed "1i $institle" | more 
+				statusins=(${PIPESTATUS[*]})
+
+				$lsrem | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | grep -i ".*$4" | grep -i ".*$5" | sed "1i $remtitle" | more 
+				statusrem=(${PIPESTATUS[*]})
+			;;
+			6)
+				$lsins | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | grep -i ".*$4" | grep -i ".*$5" | grep -i ".*$6" | sed "1i $institle" | more 
+				statusins=(${PIPESTATUS[*]})
+
+				$lsrem | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | grep -i ".*$4" | grep -i ".*$5" | grep -i ".*$6" | sed "1i $remtitle" | more 
+				statusrem=(${PIPESTATUS[*]})
+			;;
+			7)
+				$lsins | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | grep -i ".*$4" | grep -i ".*$5" | grep -i ".*$6" | grep -i ".*$7" | sed "1i $institle" | more 
+				statusins=(${PIPESTATUS[*]})
+
+				$lsrem | cut -c 28-47,64- | grep -i ".*$1" | grep -i ".*$2" | grep -i ".*$3" | grep -i ".*$4" | grep -i ".*$5" | grep -i ".*$6" | grep -i ".*$7" | sed "1i $remtitle" | more 
+				statusrem=(${PIPESTATUS[*]})
+			;;
+			*)
+				echo " $nokey"
+				exit 1
+			;;
+		esac
+
+	fi
+	
+	declare -i num=$#+1
+
+	for x in $(seq 2 $num)
+	do
+		shift
+		if [ ${statusins[$x]} != '0' ];then
+			insmatch=no
+		fi
+		key=${key}" $1"
+	done
+
+	for x in $(seq 2 $num)
+	do
+		shift
+		if [ ${statusrem[$x]} != 0 ];then
+			remmatch=no
+		fi
+		key=${key}" $1"
+	done
+	
+	if [ $insmatch == 'no' ]; then
+		echo $institle
+		echo " $nomatch $key"
+	fi
+
+	if [ $remmatch == 'no' ]; then
+		echo $remtitle
+		echo " $nomatch $key"
+	fi
+}
+
+
+function inslist(){
+
+	check_keywords $@
+#pipenum   0		1		   2			3	    4
+	$lsins | cut -c 28-47,64- | grep -iE "$key" | sed "1i $institle" | more
+	ifmatch ${PIPESTATUS[2]} $institle
+}
+
+function remlist(){
+
+	#for i in $@
+	#do 	
+	#	key=${key}"|$i" 
+	#done
+	check_keywords $@
+#pipenum   0		1		   2			3	    4
+	$lsrem | cut -c 28-47,64- | grep -iE "$key" | sed "1i $remtitle" | more
+	ifmatch ${PIPESTATUS[2]} $remtitle
+}
+
+function fstkey(){
+	if [[ $1 == -* ]]; then
+		key='.*'"$1"
+	else
+		key=$1
+	fi
+}
+
+function catpkg(){
+	cd $insdir
+	unset lsopt
+	for key in $@
+	do
+		#fstkey $key
+		check_keywords $key
+		if [ $(ls | grep -iE -s -q "$key" 1>/dev/null;echo $? ) ]; then
+			ls | grep -iE "$key" | xargs cat 2>/dev/null| less
+		else
+			ifmatch 1 $institle 
+		fi
+	done
+}
+
+function relapath2fullpath(){
+	for string in $@
+	do
+		if [ -d "$string" ]; then
+			string=$(cd $string;pwd)
+		else
+			filename=$(echo ${string##*/})
+			tmpath=$(echo ${string%/*})
+			if [ `cd $tmpath 2>/dev/null` ]; then
+				tmpath=$(pwd)
+			      	string=${tmpath}'/'${filename}
+			fi
+		fi
+	done
+	echo $string
+}
+
+function check_keywords(){
+	m=0
+	for word in $@
+	do 	
+		declare -i m=${m}+1
+		
+		word=$(relapath2fullpath $word)
+
+		# Actually, I added the scripts dir for 
+		# searching in. So, getting a link's target
+		# is not necessary.
+		# for a link, get its target file name
+		if [ -L $word ]; then
+			echo ${word}${lnfile}$(readlink $word)
+			word=(`readlink $word`)
+		# or ls -l $word | awk '{print $11}'
+		# or ls -l $word | cut -d' ' -f 12
+		#
+		fi
+	
+		# get the string length of the word
+		length=(`echo $word | wc -m`)
+		
+		# the length get from 'wc -m' is one char longer 
+		# then the real word
+		declare -i length=$length-1
+		unset tmpword
+
+		# I comment out this segment to support regex when
+		# use listpkg
+
+		# for the special characters in regex, escape them
+		for n in $(seq 1 $length)
+		do	
+			i=(`echo $word | cut -c $n`)
+			# in the logfile of packages, all paths are
+			# relatted to root dir '/', I just remove the
+			# first char '/' in keywords.
+			if [[ $n == '1' && $i == '/' ]]; then
+				#i="${i}"'.*'
+				i=''
+			elif [[ $i == '.' || $i == '-' || $i == '+' ]]; then
+				i='\'"${i}"
+			fi
+			tmpword=$tmpword$i
+		done
+		
+		word=$tmpword
+		if [ $m -eq 1 ]; then
+			key=$word
+		else
+			key=${key}"|$word" 
+		fi
+	done
+}
+
+function findfile(){
+
+	echo $search
+	check_keywords $@
+#	grep -iEo "$key" ${insdir}* | uniq | cut -c 19-
+	find {${insdir}*,${inscript}*} -name "*" | xargs grep -iEo "$key" | cut -d"/" -f 5- | sort | uniq 
+	ifmatch ${PIPESTATUS[0]}
+}
+
+case "$#" in
+	0)
+		$lsins | cut -c 28-47,64- | sed "2i $institle" | more
+		$lsrem | cut -c 28-47,64- | sed "2i $remtitle" | more
+	;;
+	*) 	
+	case "$1" in
+		-h)	
+			version
+			message
+		;;
+		--help)
+			version
+			message
+		;;
+		-a)
+			shift
+			andlogic $@
+		;;
+		-i) 
+			if [ $2 == '-a' ]; then
+				shift 2
+				andlogic -i $@
+			else
+				#fstkey $2
+				shift 
+				inslist $@
+			fi
+		;;
+		--installed)
+			if [ $2 == '-a' ]; then
+				shift 2
+				andlogic -i $@
+			else
+			#	fstkey $2
+				shift 
+				inslist $@
+			fi
+		;;
+		-r) 
+			if [ $2 == '-a' ]; then
+				shift 2
+				andlogic -r $@
+			else
+			#	fstkey $2
+				shift 
+				remlist $@
+			fi
+		;;
+		--removed)
+			if [ $2 == '-a' ]; then
+				shift 2
+				andlogic -r $@
+			else
+			#	fstkey $2
+				shift 
+				remlist $@
+			fi
+		;;
+		-c)
+			if [ -z $2 ]; then
+				echo $nokey
+			else
+				shift 
+				catpkg $@
+			fi
+		;;
+		-f)
+			shift
+			findfile $@
+		;;
+		-v)
+			version
+		;;
+		--version)
+			version
+		;;
+		-*)
+			paraerr $1
+		;;
+		*)
+			key=$1
+			shift
+			inslist $@
+			remlist 
+#			orlogic $@
+#			eval $lsins | $search && | print || ifmatch 1 $institle
+#			eval $lsrem | $search && | print || ifmatch 1 $remtitle
+	esac
+	;;
+esac
+
+
+# Change Log
+#
+# 2012-5-8 15:30
+# Version 0.0.1
+# basic list packages function
+# 1. support options '-r -h -i'
+# 2. support keywords matching
+#
+# 2012-5-8 21:30
+# version 0.0.2
+# 1. use "more" to get a easy-to-view page
+# 2. use shell function to keep the script fit
+# 3. add message in Chinese
+#
+# 2012-5-9 12:15
+# version 0.0.3
+# 1. change the function when no options import 
+# 	just list installed -> list both installed and removed
+# 2. add messages when no keywords matching
+# 3. change the help page 
+#	use '?-key' instead -> use '.*-key' instead
+# Bug:
+#	when use '-word' as the second parameter, it doesn't work
+#
+# 2012-5-9 17:34
+# version 0.0.4
+# 1. fix the bug when use '-word' as the first keyword with options '-r or -i'
+# 	make automatically to add '.*' in front of '-word' when searching packages
+# 2. fix the bug when option is empty, the no matching message will show repeated 
+#    keywords
+#	*)				*)
+#		key=$1				key=$1
+#		shift   	->		shift
+#		inslist $@			inslist $@
+#		remlist $@			remlist
+# 3. it works much better now
+#
+# 2012-5-11 10:45
+# version 0.0.5
+# 1. add new feature
+#	you can view the detail information of the packages use "listpkg -c"
+#
+# 2012-5-16 23:45
+# considering new features: 
+# 1. print warning and exit when the DIRs not exist.
+# 2. add matching logic 'and', just 'or' logic seems not enough.
+#
+# 2012-5-17 10:00
+# found that 'eval' is functional, it gives power to the variable with pipe inside.
+# but can not get the pipestatus when used eval.
+# it may helpful http://www.unix.com/shell-programming-scripting/128869-creating-run-script-getting-pipestatus-eval.html
+# or use keyworks "get PIPESTATUS when use eval" searching in google
+# 
+# 2012-5-17 14:45
+# version 0.0.6
+# 1. add new feature:
+#	support AND logic when searching packages using keywords, it can be
+#  used by '-a' option.
+#	did not use any information got this morning, use a andlogic function 
+#  to achieve this, but I think the algorithm is really really bad!
+#
+# 2012-5-22 13:30
+# version 0.0.7
+# 1. add new feature:
+#	support looking for keywords in detail information, it will convenient
+#  to find out whick package one file belongs to.
+#
+# 2012-7-21 13:06
+# version 0.0.8
+# 1. fixed bug: can not find some truely exist files
+#	use find instead of just grep to fix it, add the directory /var/log/scripts/ for searching in.
+#
+# 2012-8-15 22:07
+# version 0.0.9
+# 1. new feature added:
+#	make keywork checking a standalone Function, support translating relative path to absolute path automatically.
+# 2. bug fixed: for 'listpkg -c', show blank screen instead of message when no matched packages
+#	add a judgement expression in 'catpkg' Funtion.
+# 3. bug fixed: showing the message 'terminated by signal 13' some times
+#	just add a redirection

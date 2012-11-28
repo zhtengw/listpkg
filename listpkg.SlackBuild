@@ -1,0 +1,51 @@
+#!/bin/bash
+
+PKGNAM=listpkg
+VERSION=$(listpkg-latest -v | grep -v "listpkg" | cut -d' ' -f 2)
+BUILD=${BUILD:-1}
+TAG=${TAG:-_aten}
+CWD=$(pwd)
+PKG=${CWD}/buildlistpkg
+OUTPUT=${OUTPUT:-"$CWD"}
+ARCH=noarch
+
+if [ $UID != 0 ]; then
+  echo "Please run me as root!"
+  exit 1
+fi
+
+rm -rf $PKG
+mkdir -p $PKG/sbin $PKG/install $OUTPUT
+
+cp listpkg-latest $PKG/sbin/listpkg
+chmod u+x $PKG/sbin/listpkg
+
+declare -i length=$(echo $PKGNAM | wc -m)-1
+for num in $(seq 1 $length)
+do
+  blank=${blank}' '
+done
+cat > $PKG/install/slack-desc <<EOF
+# HOW TO EDIT THIS FILE:
+# The "handy ruler" below makes it easier to edit a package description.  Line
+# up the first '|' above the ':' following the base package name, and the '|' on
+# the right side marks the last column you can put a character in.  You must make
+# exactly 11 lines for the formatting to be correct.  It's also customary to
+# leave one space after the ':'.
+
+$blank|-----handy-ruler-----------------------------------------------------|
+$PKGNAM: $PKGNAM (A commandline tool to view the package information)
+$PKGNAM:
+$PKGNAM: It is a shell script to extended the function of pkgtools. It gives
+$PKGNAM: a way to list the installed and removed packages, and to show their
+$PKGNAM: detail informations. It is more powerful then the VIEW option of 
+$PKGNAM: pkgtool.
+$PKGNAM: It only works in Slackware and other distributions based on 
+$PKGNAM: Slackware.
+$PKGNAM: 
+$PKGNAM: Contect the Author: atenzd@gmail.com
+$PKGNAM:
+EOF
+
+cd $PKG
+/sbin/makepkg -l y -c y $OUTPUT/$PKGNAM-$VERSION-$ARCH-$BUILD$TAG.txz
